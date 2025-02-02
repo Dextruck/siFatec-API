@@ -4,8 +4,8 @@ start-dev:
 start:
 	uvicorn app.main:app
 
-psql-up:
+up:
 	sudo docker compose -f .docker/docker-compose.yml up -d --build --force-recreate --remove-orphans db
 
-psql-down:
+stop:
 	sudo docker compose -f .docker/docker-compose.yml down -v --remove-orphans

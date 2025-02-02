@@ -13,9 +13,9 @@ services:
   db:
     image: postgres:14.2-alpine
     environment:
-      - POSTGRES_DB=fastapi_test_db
-      - POSTGRES_USER=fastapi_test
-      - POSTGRES_PASSWORD=fastapitestpassword
+      - POSTGRES_DB=siFatec_db
+      - POSTGRES_USER=siFatec
+      - POSTGRES_PASSWORD=.s1F4t3C!
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     ports:
