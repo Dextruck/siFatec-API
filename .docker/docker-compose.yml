@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: ../
+      dockerfile: ../Dockerfile
+    volumes:
+      - ../:/app
+    ports:
+      - "8000:8000"
+
+  db:
+    image: postgres:14.2-alpine
+    environment:
+      - POSTGRES_DB=fastapi_test_db
+      - POSTGRES_USER=fastapi_test
+      - POSTGRES_PASSWORD=fastapitestpassword
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:
