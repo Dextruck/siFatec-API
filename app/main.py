@@ -1,7 +1,7 @@
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
-from . import action, models, schemas
+from . import actions, models, schemas
 from .database import SessionLocal, engine
 
 # Cria as tabelas no banco de dados
