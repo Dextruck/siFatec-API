@@ -1,5 +1,5 @@
 ## Documentação API siFatec
-```markdown
+```bash
 # 📦 Instalação do SQLAlchemy e FastAPI
 
 Este guia ajuda a configurar um ambiente com **SQLAlchemy** e **FastAPI**, incluindo recomendações sobre o uso de ambiente virtual.
