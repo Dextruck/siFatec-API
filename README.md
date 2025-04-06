@@ -77,4 +77,3 @@ uvicorn app.main:app --reload
 ---
 
 Feito com 💻 por JV.
-```
