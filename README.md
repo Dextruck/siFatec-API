@@ -78,5 +78,3 @@ uvicorn app.main:app --reload
 
 Feito com 💻 por JV.
 ```
-
-Se quiser, posso adicionar uma seção com instruções para o Thunder Client ou exemplo de uso da API também. Só avisar!
