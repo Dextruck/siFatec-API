@@ -37,6 +37,12 @@ Em seguida, instale o SQLAlchemy dentro do ambiente virtual:
 pip install sqlalchemy
 ```
 
+```bash
+pip install psycopg2-binary
+```
+
+Esse pacote (`psycopg2-binary`) é a versão empacotada com tudo o que você precisa (mais fácil para desenvolvimento). Ele resolve esse erro rapidamente.
+
 ---
 
 ## 🧪 Verifique o ambiente do Python
