@@ -8,14 +8,17 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    password: str
-    email: str
     name: str
+    username: str
+    full_name: str
+    email: str
+    cpf: str
+    password: str
+    is_active: bool
 
 
 
-
-class User(UserBase):
+class Users(UserBase):
     id: int
     is_active: bool
     class Config:

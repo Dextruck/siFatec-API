@@ -31,7 +31,6 @@ class User(PrimaryKey, Base, AuditMixin):
     notifications = relationship('NotificationsUsers', back_populates='user')
     received_notifications = relationship('Notification', secondary='notifications_users', back_populates='receivers')
 
-
 class UsersProfiles(Base, AuditMixin):
     __tablename__ = 'users_profiles'
     user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
@@ -46,7 +45,6 @@ class UsersProfiles(Base, AuditMixin):
     user = relationship('User', back_populates='profile')
     institution = relationship('Institution')
 
-
 class Subject(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'subjects'
     name = Column(String, index=True)
@@ -57,7 +55,6 @@ class Subject(PrimaryKey, Base, AuditMixin):
     enrollments = relationship('Enrollment', back_populates='subject')
     sessions = relationship('ClassSessions', back_populates='subject')
 
-
 class Course(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'courses'
     name = Column(String(255), index=True)
@@ -67,7 +64,6 @@ class Course(PrimaryKey, Base, AuditMixin):
     enrollments = relationship('Enrollment', back_populates='course')
     sessions = relationship('ClassSessions', back_populates='course')
 
-
 class SchoolYear(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'school_years'
     year = Column(Integer, unique=True)
@@ -75,7 +71,6 @@ class SchoolYear(PrimaryKey, Base, AuditMixin):
     end_date = Column(DateTime())
 
     periods = relationship('Period', back_populates='school_year')
-
 
 class Period(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'periods'
@@ -88,13 +83,11 @@ class Period(PrimaryKey, Base, AuditMixin):
     class_groups = relationship('ClassGroup', back_populates='period')
     sessions = relationship('ClassSessions', back_populates='period')
 
-
-class Shift(PrimaryKey, Base, AuditMixin):
+class Shifts(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'shifts'
     name = Column(String(255))
 
     sessions = relationship('ClassSchedule', back_populates='shift')
-
 
 class WeekDay(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'week_days'
@@ -107,18 +100,18 @@ class States(PrimaryKey, Base, AuditMixin):
     name = Column(String(255), unique=True)
     acronym = Column(String(5), unique=True)
 
-    state = relationship('Institution', back_populates='states')
+    institutions = relationship('Institution', back_populates='state')
 
 class Institution(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'institutions'
     name = Column(String(255))
     city = Column(String(255))
-    state = Column(Integer, ForeignKey('states.id'))
+    state_id = Column(Integer, ForeignKey('states.id'))
     address = Column(String(255))
     is_active = Column(Boolean)
 
+    state = relationship('States', back_populates='institutions')
     class_groups = relationship('ClassGroup', back_populates='institution')
-
 
 class ClassGroup(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'class_groups'
@@ -131,15 +124,14 @@ class ClassGroup(PrimaryKey, Base, AuditMixin):
     enrollments = relationship('Enrollment', back_populates='class_group')
     sessions = relationship('ClassSessions', back_populates='class_group')
 
-
 class ClassSchedule(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'class_schedules'
     start_time = Column(Time())
     end_time = Column(Time())
     shift_id = Column(Integer, ForeignKey('shifts.id'))
 
+    shift = relationship('Shifts', back_populates='sessions')
     sessions = relationship('ClassSessions', back_populates='schedule')
-
 
 class ClassSessions(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'class_sessions'
@@ -154,13 +146,11 @@ class ClassSessions(PrimaryKey, Base, AuditMixin):
 
     subject = relationship('Subject', back_populates='sessions')
     class_group = relationship('ClassGroup', back_populates='sessions')
-    shift = relationship('Shift', back_populates='sessions')
     period = relationship('Period', back_populates='sessions')
     course = relationship('Course', back_populates='sessions')
     schedule = relationship('ClassSchedule', back_populates='sessions')
     week_day = relationship('WeekDay', back_populates='sessions')
     absences = relationship('StudentAbsences', back_populates='class_session')
-
 
 class StudentAbsences(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'student_absences'
@@ -172,13 +162,11 @@ class StudentAbsences(PrimaryKey, Base, AuditMixin):
     enrollment = relationship('Enrollment', back_populates='absences')
     class_session = relationship('ClassSessions', back_populates='absences')
 
-
 class EnrollmentsStatus(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'enrollments_status'
     status = Column(String(255), unique=True)
 
     enrollments = relationship('Enrollment', back_populates='status')
-
 
 class Enrollment(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'enrollments'
@@ -195,14 +183,12 @@ class Enrollment(PrimaryKey, Base, AuditMixin):
     status = relationship('EnrollmentsStatus', back_populates='enrollments')
     absences = relationship('StudentAbsences', back_populates='enrollment')
 
-
 class Role(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'roles'
     name = Column(String(255), nullable=False, unique=True)
 
     permissions = relationship('RolePermission', back_populates='role')
     users = relationship('UsersRoles', back_populates='role')
-
 
 class UsersRoles(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'users_roles'
@@ -212,14 +198,12 @@ class UsersRoles(PrimaryKey, Base, AuditMixin):
     user = relationship('User', back_populates='roles')
     role = relationship('Role', back_populates='users')
 
-
 class Permission(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'permissions'
     permission = Column(String(255), unique=True)
     description = Column(String)
 
     roles = relationship('RolePermission', back_populates='permission')
-
 
 class RolePermission(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'role_permissions'
@@ -229,7 +213,6 @@ class RolePermission(PrimaryKey, Base, AuditMixin):
     role = relationship('Role', back_populates='permissions')
     permission = relationship('Permission', back_populates='roles')
 
-
 class Notification(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'notifications'
     title = Column(String(50))
@@ -238,7 +221,6 @@ class Notification(PrimaryKey, Base, AuditMixin):
 
     user = relationship("User")
     receivers = relationship("User", secondary="notifications_users", back_populates="received_notifications")
-
 
 class NotificationsUsers(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'notifications_users'
