@@ -52,7 +52,7 @@ class Subject(PrimaryKey, Base, AuditMixin):
     workload_hours = Column(Integer)
     class_duration_minutes = Column(Integer)
 
-    enrollments = relationship('Enrollment', back_populates='subject')
+    class_group = relationship('ClassGroup', back_populates='subject')
     sessions = relationship('ClassSessions', back_populates='subject')
 
 class Course(PrimaryKey, Base, AuditMixin):
@@ -118,11 +118,13 @@ class ClassGroup(PrimaryKey, Base, AuditMixin):
     name = Column(String(255))
     period_id = Column(Integer, ForeignKey('periods.id'))
     institution_id = Column(Integer, ForeignKey('institutions.id'))
+    subject_id = Column(Integer, ForeignKey('subjects.id'))
 
     period = relationship('Period', back_populates='class_groups')
     institution = relationship('Institution', back_populates='class_groups')
     enrollments = relationship('Enrollment', back_populates='class_group')
     sessions = relationship('ClassSessions', back_populates='class_group')
+    subject = relationship('Subject', back_populates='class_group')
 
 class ClassSchedule(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'class_schedules'
@@ -171,13 +173,11 @@ class EnrollmentsStatus(PrimaryKey, Base, AuditMixin):
 class Enrollment(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'enrollments'
     student_id = Column(Integer, ForeignKey('users.id'))
-    subject_id = Column(Integer, ForeignKey('subjects.id'))
     course_id = Column(Integer, ForeignKey('courses.id'))
     class_group_id = Column(Integer, ForeignKey('class_groups.id'))
     status_id = Column(Integer, ForeignKey('enrollments_status.id'))
 
     student = relationship('User')
-    subject = relationship('Subject', back_populates='enrollments')
     course = relationship('Course', back_populates='enrollments')
     class_group = relationship('ClassGroup', back_populates='enrollments')
     status = relationship('EnrollmentsStatus', back_populates='enrollments')
