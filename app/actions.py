@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 
 
 from . import models, schemas
+from .auth import hash_password
 
 
 
@@ -23,14 +24,14 @@ def get_users(db: Session, skip: int = 0, limit: int = 100):
 
 
 def create_user(db: Session, user: schemas.UserCreate):
-  fake_hashed_password = user.password + "notreallyhashed"
+  hashed_password = hash_password(user.password)
   db_user = models.User(
     name=user.name,
     username=user.username,
     full_name=user.full_name,
     email=user.email,
     cpf=user.cpf,
-    password=fake_hashed_password,
+    password=hashed_password,
     is_active=user.is_active
   )
   db.add(db_user)
