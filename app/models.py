@@ -30,6 +30,7 @@ class User(PrimaryKey, Base, AuditMixin):
     roles = relationship('UsersRoles', back_populates='user')
     notifications = relationship('NotificationsUsers', back_populates='user')
     received_notifications = relationship('Notification', secondary='notifications_users', back_populates='receivers')
+    student_periods = relationship('StudentPeriod', back_populates='user')
 
 class UsersProfiles(Base, AuditMixin):
     __tablename__ = 'users_profiles'
@@ -82,6 +83,7 @@ class Period(PrimaryKey, Base, AuditMixin):
     school_year = relationship('SchoolYear', back_populates='periods')
     class_groups = relationship('ClassGroup', back_populates='period')
     sessions = relationship('ClassSessions', back_populates='period')
+    student_periods = relationship('StudentPeriod', back_populates='period')
 
 class Shifts(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'shifts'
@@ -182,6 +184,16 @@ class Enrollment(PrimaryKey, Base, AuditMixin):
     class_group = relationship('ClassGroup', back_populates='enrollments')
     status = relationship('EnrollmentsStatus', back_populates='enrollments')
     absences = relationship('StudentAbsences', back_populates='enrollment')
+
+class StudentPeriod(PrimaryKey, Base, AuditMixin):
+    __tablename__ = 'student_periods'
+
+    user_id = Column(Integer, ForeignKey('users.id'))
+    period_id = Column(Integer, ForeignKey('periods.id'))
+    course_period = Column(Integer)  # Ex: 5 para 5º semestre
+
+    user = relationship('User', back_populates='student_periods')
+    period = relationship('Period', back_populates='student_periods')
 
 class Role(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'roles'
