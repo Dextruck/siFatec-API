@@ -127,6 +127,7 @@ class ClassGroup(PrimaryKey, Base, AuditMixin):
     enrollments = relationship('Enrollment', back_populates='class_group')
     sessions = relationship('ClassSessions', back_populates='class_group')
     subject = relationship('Subject', back_populates='class_group')
+    assessment_instruments = relationship('AssessmentInstrument', back_populates='class_group')
 
 class ClassSchedule(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'class_schedules'
@@ -241,3 +242,25 @@ class NotificationsUsers(PrimaryKey, Base, AuditMixin):
 
     notification = relationship('Notification')
     user = relationship('User', back_populates='notifications')
+
+class AssessmentInstrument(PrimaryKey, Base, AuditMixin):
+    __tablename__ = 'assessment_instruments'
+
+    class_group_id = Column(Integer, ForeignKey('class_groups.id'), nullable=False)
+    description = Column(String)  # Ou use Text se quiser mais espaço: from sqlalchemy import Text
+    weight = Column(Integer)
+    application_date = Column(DateTime)
+
+    class_group = relationship('ClassGroup', back_populates='assessment_instruments')
+    scores = relationship('Score', back_populates='assessment_instrument')
+
+
+class Score(PrimaryKey, Base, AuditMixin):
+    __tablename__ = 'scores'
+
+    value = Column(Integer)
+    assessment_instrument_id = Column(Integer, ForeignKey('assessment_instruments.id'), nullable=False)
+    enrollment_id = Column(Integer, ForeignKey('enrollments.id'), nullable=False)
+
+    assessment_instrument = relationship('AssessmentInstrument', back_populates='scores')
+    enrollment = relationship('Enrollment')
