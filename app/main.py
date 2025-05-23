@@ -5,7 +5,7 @@ from .db import get_db
 
 from . import actions, models, schemas
 from .database import SessionLocal, engine
-from .auth import authenticate_user, create_access_token, get_home_profile
+from .auth import authenticate_user, create_access_token, get_home_profile, token_info_validate
 
 # Cria as tabelas no banco de dados
 models.Base.metadata.create_all(bind=engine)
@@ -52,3 +52,43 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
 @app.get("/profile", response_model= schemas.UserProfile)
 async def home_profile(current_user: models.User = Depends(get_home_profile)):
     return current_user
+
+
+# Rota para buscar notas do usuário
+@app.get("/students/scores", response_model= list[schemas.ScoreInfo])
+def get_student_scores(token: dict = Depends(token_info_validate), db: Session = Depends(get_db)):
+    user_id = int(token.get("sub"))
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
+    result = {}
+
+    for enrollment in user.enrollments:
+        subject = enrollment.class_group.subject
+        subject_name = subject.name
+
+        instruments = enrollment.class_group.assessment_instruments
+
+        assessments = []
+        for instrument in instruments:
+            score = next((s.value for s in instrument.scores if s.enrollment_id == enrollment.id), None)
+            assessments.append({
+                "instrument_id": instrument.id,
+                "description": instrument.description,
+                "application_date": instrument.application_date,
+                "weight": instrument.weight,
+                "score": score
+            })
+
+        if subject_name not in result:
+            result[subject_name] = {
+                "subject": subject_name,
+                "assessment_instruments": assessments
+            }
+        else:
+            result[subject_name]["assessment_instruments"].extend(assessments)
+    
+    print(list(result.values()))
+    return list(result.values())
+

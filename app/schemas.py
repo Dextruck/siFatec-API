@@ -1,4 +1,7 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
+from typing import List, Optional
+from datetime import datetime
+
 
 class UserBase(BaseModel):
     email: str
@@ -56,3 +59,29 @@ class UserProfile(BaseModel):
     name: str
     registration_number: str
     student_period: int
+
+
+
+class AssessmentInstrumentSchema(BaseModel):
+    description: str
+    weight: int
+    application_date: datetime
+    score: Optional[int]
+
+class ScoreInfo(BaseModel):
+    subject: str
+    assessment_instruments: list[AssessmentInstrumentSchema]
+
+
+
+
+# class AssessmentInstrument:
+#     date: str
+#     value: float
+#     desc: str
+
+
+# Usado para retornar as notas do usuário
+# class Scores(BaseModel):
+#     subject:
+#     assessment_instrument

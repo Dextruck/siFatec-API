@@ -26,6 +26,7 @@ class User(PrimaryKey, Base, AuditMixin):
     password = Column(String)
     is_active = Column(Boolean)
 
+    enrollments = relationship('Enrollment', back_populates='student')
     profile = relationship('UsersProfiles', back_populates='user', uselist=False)
     roles = relationship('UsersRoles', back_populates='user')
     notifications = relationship('NotificationsUsers', back_populates='user')
@@ -180,7 +181,7 @@ class Enrollment(PrimaryKey, Base, AuditMixin):
     class_group_id = Column(Integer, ForeignKey('class_groups.id'))
     status_id = Column(Integer, ForeignKey('enrollments_status.id'))
 
-    student = relationship('User')
+    student = relationship('User', back_populates='enrollments')
     course = relationship('Course', back_populates='enrollments')
     class_group = relationship('ClassGroup', back_populates='enrollments')
     status = relationship('EnrollmentsStatus', back_populates='enrollments')
