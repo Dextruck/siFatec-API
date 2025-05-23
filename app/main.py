@@ -5,7 +5,7 @@ from .db import get_db
 
 from . import actions, models, schemas
 from .database import SessionLocal, engine
-from .auth import authenticate_user, create_access_token, get_current_user
+from .auth import authenticate_user, create_access_token, get_home_profile
 
 # Cria as tabelas no banco de dados
 models.Base.metadata.create_all(bind=engine)
@@ -27,12 +27,6 @@ def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     users = actions.get_users(db, skip=skip, limit=limit)
     return users
 
-@app.get("/users/me", response_model=schemas.Users)
-async def read_users_me(
-    current_user: models.User = Depends(get_current_user)
-):
-    return current_user
-
 # Rota para obter um usuário específico pelo ID
 @app.get("/users/{user_id}", response_model=schemas.Users)
 def read_user(user_id: int, db: Session = Depends(get_db)):
@@ -51,10 +45,10 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
             detail="Email ou senha inválidos",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = create_access_token(data={"sub": user.email})
+    access_token = create_access_token(data={"sub": str(user.user.id), "email":user.user.email, "role":user.role_id})
     return {"access_token": access_token, "token_type": "bearer"}
 
-# users/me
-# @app.get("/users/me", response_model=schemas.Users)
-# async def read_users_me(current_user: models.User = Depends(get_current_user)):
-#     return current_user
+# Rota para buscar infos da tela inicial
+@app.get("/profile", response_model= schemas.UserProfile)
+async def home_profile(current_user: models.User = Depends(get_home_profile)):
+    return current_user

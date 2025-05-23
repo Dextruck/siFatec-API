@@ -11,7 +11,8 @@ def get_user(db: Session, user_id: int):
   return db.query(models.User).filter(models.User.id == user_id).first()
 
 
-
+def get_role_by_id(db: Session, user_id: int):
+  return db.query(models.UsersRoles).filter(models.UsersRoles.user_id == user_id).first()
 
 def get_user_by_email(db: Session, email: str):
   return db.query(models.User).filter(models.User.email == email).first()

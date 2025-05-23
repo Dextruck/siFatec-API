@@ -30,11 +30,14 @@ def verify_password(plain_password, hashed_password):
 def get_password_hash(password):
     return pwd_context.hash(password)
 
+# Chamada no envio do login para validar o user e retornar infos uteis para o token
 def authenticate_user(db: Session, email: str, password: str):
     user = actions.get_user_by_email(db, email)
     if not user or not verify_password(password, user.password):
         return False
-    return user
+    user_roles = [role.role_id for role in user.roles] 
+    authenticated_user = schemas.AuthenticatedUser(user=user.__dict__, role_id=user_roles)
+    return authenticated_user
 
 def create_access_token(data: dict):
     to_encode = data.copy()
@@ -43,22 +46,37 @@ def create_access_token(data: dict):
 def get_user(db: Session, email: str):
     return actions.get_user_by_email(db, email)
 
-async def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
+# Retorna o profile do usuário logado
+# Ainda não está finalizada. Falta trazer percenntual de progressão e rendimento
+async def get_home_profile(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Não foi possível validar credenciais",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
+        user_id = int(payload.get("sub"))
+        if user_id is None:
             raise credentials_exception
-        token_data = schemas.TokenData(email=email)
-    except JWTError:
+    except JWTError as e:
         raise credentials_exception
 
-    user = get_user(db, token_data.email)
+    user = actions.get_user(db, user_id)
     if user is None:
         raise credentials_exception
-    return user
+    
+    period = max([sp.course_period for sp in user.student_periods], default=0) if user.student_periods else 0
+
+    if not user.profile:
+        raise HTTPException(status_code=500, detail="Perfil do usuário não encontrado")
+    
+    user_profile = schemas.UserProfile(
+        name=user.full_name, 
+        registration_number=user.profile.registration_number, 
+        student_period=period
+    )
+
+    return user_profile
