@@ -55,6 +55,7 @@ async def home_profile(current_user: models.User = Depends(get_home_profile)):
 
 
 # Rota para buscar notas do usuário
+# Para finalizar ainda é necessário criar identificação de semestre
 @app.get("/students/scores", response_model= list[schemas.ScoreInfo])
 def get_student_scores(token: dict = Depends(token_info_validate), db: Session = Depends(get_db)):
     user_id = int(token.get("sub"))
@@ -92,3 +93,38 @@ def get_student_scores(token: dict = Depends(token_info_validate), db: Session =
     print(list(result.values()))
     return list(result.values())
 
+
+
+# Rota para buscar as faltas do usuário
+# Para finalizar ainda é necessário criar identificação de semestre
+@app.get("/students/absences", response_model= list[schemas.AbsencesInfo])
+def get_student_absences(token: dict = Depends(token_info_validate), db: Session = Depends(get_db)):
+
+    user_id = int(token.get("sub"))
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
+    result = {}
+
+    for enrollment in user.enrollments:
+
+        subject = enrollment.class_group.subject
+        subject_name = subject.name
+        class_sessions = enrollment.class_group.sessions    
+
+        classes = 0
+        absences = 0
+
+        for class_session in class_sessions:
+            classes += 1
+            for ab in class_session.absences:
+                absences += 1
+
+        result[subject_name] = {
+            "subject": subject_name,
+            "presences": classes - absences,
+            "absences": absences
+        }
+    
+    return list(result.values())

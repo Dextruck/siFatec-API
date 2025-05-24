@@ -72,7 +72,10 @@ class ScoreInfo(BaseModel):
     subject: str
     assessment_instruments: list[AssessmentInstrumentSchema]
 
-
+class AbsencesInfo(BaseModel):
+    subject: str
+    presences: int
+    absences: int
 
 
 # class AssessmentInstrument:
