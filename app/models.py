@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, func, Index, UniqueConstraint, Time
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, Date, func, Index, UniqueConstraint, Time
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -55,7 +55,6 @@ class Subject(PrimaryKey, Base, AuditMixin):
     class_duration_minutes = Column(Integer)
 
     class_group = relationship('ClassGroup', back_populates='subject')
-    sessions = relationship('ClassSessions', back_populates='subject')
 
 class Course(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'courses'
@@ -83,7 +82,6 @@ class Period(PrimaryKey, Base, AuditMixin):
 
     school_year = relationship('SchoolYear', back_populates='periods')
     class_groups = relationship('ClassGroup', back_populates='period')
-    sessions = relationship('ClassSessions', back_populates='period')
     student_periods = relationship('StudentPeriod', back_populates='period')
 
 class Shifts(PrimaryKey, Base, AuditMixin):
@@ -122,6 +120,7 @@ class ClassGroup(PrimaryKey, Base, AuditMixin):
     period_id = Column(Integer, ForeignKey('periods.id'))
     institution_id = Column(Integer, ForeignKey('institutions.id'))
     subject_id = Column(Integer, ForeignKey('subjects.id'))
+    teacher_id = Column(Integer, ForeignKey('users.id'), nullable=True)
 
     period = relationship('Period', back_populates='class_groups')
     institution = relationship('Institution', back_populates='class_groups')
@@ -129,6 +128,7 @@ class ClassGroup(PrimaryKey, Base, AuditMixin):
     sessions = relationship('ClassSessions', back_populates='class_group')
     subject = relationship('Subject', back_populates='class_group')
     assessment_instruments = relationship('AssessmentInstrument', back_populates='class_group')
+    teacher = relationship('User', foreign_keys=[teacher_id])
 
 class ClassSchedule(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'class_schedules'
@@ -141,18 +141,17 @@ class ClassSchedule(PrimaryKey, Base, AuditMixin):
 
 class ClassSessions(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'class_sessions'
-    teacher_id = Column(Integer)
-    subject_id = Column(Integer, ForeignKey('subjects.id'))
     class_group_id = Column(Integer, ForeignKey('class_groups.id'))
-    period_id = Column(Integer, ForeignKey('periods.id'))
     course_id = Column(Integer, ForeignKey('courses.id'))
     class_schedule_id = Column(Integer, ForeignKey('class_schedules.id'))
     location = Column(String(255))
     week_day_id = Column(Integer, ForeignKey('week_days.id'))
-
-    subject = relationship('Subject', back_populates='sessions')
+    date = Column(Date, nullable=False)
+    confirmed_at = Column(Boolean, default=False)
+    canceled = Column(Boolean, default=False)
+    canceled_desc = Column(String(500), nullable=True)
+    
     class_group = relationship('ClassGroup', back_populates='sessions')
-    period = relationship('Period', back_populates='sessions')
     course = relationship('Course', back_populates='sessions')
     schedule = relationship('ClassSchedule', back_populates='sessions')
     week_day = relationship('WeekDay', back_populates='sessions')

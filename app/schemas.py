@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, time
 
 
 class UserBase(BaseModel):
@@ -76,6 +76,19 @@ class AbsencesInfo(BaseModel):
     subject: str
     presences: int
     absences: int
+
+class ClassInfo(BaseModel):
+    subject_name: str
+    acronym: str
+    teacher: str
+    start_time: time
+    end_time: time
+    local: str
+
+class ScheduleInfo(BaseModel):
+    week_day: str
+    subjects: list[ClassInfo]
+
 
 
 # class AssessmentInstrument:
