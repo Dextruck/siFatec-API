@@ -1,6 +1,7 @@
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from typing import List, Optional
 from .db import get_db
 
 from . import actions, models, schemas
@@ -55,7 +56,7 @@ async def home_profile(current_user: models.User = Depends(get_home_profile)):
 
 
 # Rota para buscar notas do usuário
-# Para finalizar ainda é necessário criar identificação de semestre
+# Para finalizar: modularizar funções, adicionar verificações e HTTPExceptions
 @app.get("/students/scores", response_model= list[schemas.ScoreInfo])
 def get_student_scores(token: dict = Depends(token_info_validate), db: Session = Depends(get_db)):
     user_id = int(token.get("sub"))
@@ -66,6 +67,10 @@ def get_student_scores(token: dict = Depends(token_info_validate), db: Session =
     result = {}
 
     for enrollment in user.enrollments:
+
+        if enrollment.status_id != 1:
+            continue
+
         subject = enrollment.class_group.subject
         subject_name = subject.name
 
@@ -96,7 +101,7 @@ def get_student_scores(token: dict = Depends(token_info_validate), db: Session =
 
 
 # Rota para buscar as faltas do usuário
-# Para finalizar ainda é necessário criar identificação de semestre
+# Para finalizar: modularizar funções, adicionar verificações e HTTPExceptions
 @app.get("/students/absences", response_model= list[schemas.AbsencesInfo])
 def get_student_absences(token: dict = Depends(token_info_validate), db: Session = Depends(get_db)):
 
@@ -108,6 +113,9 @@ def get_student_absences(token: dict = Depends(token_info_validate), db: Session
     result = {}
 
     for enrollment in user.enrollments:
+
+        if enrollment.status_id != 1:
+            continue
 
         subject = enrollment.class_group.subject
         subject_name = subject.name
@@ -130,8 +138,10 @@ def get_student_absences(token: dict = Depends(token_info_validate), db: Session
     return list(result.values())
 
 
-@app.get("/students/schedule")
-def get_schedule(db: Session = Depends(get_db), token: dict = Depends(token_info_validate)):
+# Rota para buscar a agenda semanal do aluno
+# Para finalizar: modularizar funções, adicionar verificações e HTTPExceptions
+@app.get("/students/schedule", response_model= list[schemas.ScheduleInfo])
+def get_student_schedule(db: Session = Depends(get_db), token: dict = Depends(token_info_validate)):
     user_id = int(token.get("sub"))
     user = db.query(models.User).filter(models.User.id == user_id).first()
 
@@ -144,9 +154,9 @@ def get_schedule(db: Session = Depends(get_db), token: dict = Depends(token_info
     for enrollment in user.enrollments:
         sessions.append(enrollment.class_group.sessions)
     
-    lista_flat = [item for sublista in sessions for item in sublista]
+    flat_list = [item for sublist in sessions for item in sublist]
 
-    sessions = lista_flat
+    sessions = flat_list
 
     for session in sessions:
         if not session.class_group or not session.week_day or not session.schedule:
@@ -158,166 +168,95 @@ def get_schedule(db: Session = Depends(get_db), token: dict = Depends(token_info
         if week_day_name not in schedule_by_day:
             schedule_by_day[week_day_name] = []
 
-        disciplinas = schedule_by_day[week_day_name]
+        subjects = schedule_by_day[week_day_name]
 
         # Verifica se já existe uma disciplina nesse mesmo horário
-        if any(d.start_time == session.schedule.start_time for d in disciplinas):
+        if any(d.start_time == session.schedule.start_time for d in subjects):
             continue  # pula se já houver uma com o mesmo horário
 
-        disciplina_info = schemas.ClassInfo(
+        subject_info = schemas.ClassInfo(
             subject_name = session.class_group.subject.name,
             acronym = session.class_group.subject.syllabus,
             teacher = session.class_group.teacher.name if session.class_group.teacher else "Professor não definido",
             start_time = session.schedule.start_time,
             end_time = session.schedule.end_time,
-            local = session.location if session.location else "Local não definido"
+            local = session.location if session.location else "Não definido"
         )
 
-        disciplinas.append(disciplina_info)
-        schedule_by_day[week_day_name] = disciplinas
+        subjects.append(subject_info)
+        schedule_by_day[week_day_name] = subjects
 
     # Monta a lista final ordenada por dias da semana (opcional)
-    dias_ordenados = [
+    sorted_days = [
         "segunda-feira", "terça-feira", "quarta-feira", 
         "quinta-feira", "sexta-feira", "sábado", "domingo"
     ]
 
-    resultado = [
+    result = [
         {
-            "dia_da_semana": dia,
-            "disciplinas": sorted(schedule_by_day[dia], key=lambda d: d.start_time)
+            "week_day": day,
+            "subjects": sorted(schedule_by_day[day], key=lambda d: d.start_time)
         }
-        for dia in dias_ordenados if dia in schedule_by_day
+        for day in sorted_days if day in schedule_by_day
     ]
 
-    return resultado
+    return result
 
+# Rota para buscar o historico do aluno
+# Para finalizar: modularizar funções, adicionar verificações e HTTPExceptions
+@app.get("/students/history", response_model=List[schemas.HistoryInfo])
+def get_student_history(token: dict = Depends(token_info_validate), db: Session = Depends(get_db)):
+    user_id = int(token.get("sub"))
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
+    history = {}
 
+    for enrollment in user.enrollments:
+        if enrollment.status_id != 3:
+            continue
 
+        year = enrollment.class_group.period.school_year.year
+        period = enrollment.class_group.period.name
+        key = f"{year}-{period}"
 
+        if key not in history:
+            history[key] = {
+                "year": year,
+                "period": period,
+                "subjects": []
+            }
 
+        subject = enrollment.class_group.subject
+        subject_name = subject.name
+        acronym = subject.syllabus
 
+        instruments = enrollment.class_group.assessment_instruments
+        total_weight = 0
+        weighted_sum = 0
 
+        for instrument in instruments:
+            score = next((s.value for s in instrument.scores if s.enrollment_id == enrollment.id and s.value is not None), None)
+            if score is not None:
+                weight = instrument.weight
+                weighted_sum += score * weight
+                total_weight += weight
 
+        avg_score = round(weighted_sum / total_weight, 2) if total_weight > 0 else None
 
+        class_sessions = enrollment.class_group.sessions
+        total_classes = len(class_sessions)
+        total_absences = sum(
+            1 for session in class_sessions for ab in session.absences if ab.enrollment_id == enrollment.id
+        )
+        attendance_percent = round(((total_classes - total_absences) / total_classes) * 100, 2) if total_classes > 0 else None
 
+        history[key]["subjects"].append({
+            "subject_name": subject_name,
+            "acronym": acronym,
+            "attendance": attendance_percent,
+            "avarage_score": avg_score
+        })
 
-
-
-
-
-
-# @app.get("/students/schedule")
-# def get_student_schedule(token: dict = Depends(token_info_validate), db: Session = Depends(get_db)):
-#     user_id = int(token.get("sub"))
-#     user = db.query(models.User).filter(models.User.id == user_id).first()
-
-#     if not user:
-#         raise HTTPException(status_code=404, detail="Usuário não encontrado")
-
-#     # Mapeia os dias da semana para garantir ordem e nomes fixos
-#     week_days_map = {
-#         "domingo": [],
-#         "segunda-feira": [],
-#         "terça-feira": [],
-#         "quarta-feira": [],
-#         "quinta-feira": [],
-#         "sexta-feira": [],
-#         "sábado": []
-#     }
-
-#     for enrollment in user.enrollments:
-#         class_group = enrollment.class_group
-#         if not class_group:
-#             continue
-
-#         subject = class_group.subject
-#         teacher = class_group.teacher
-
-#         for session in class_group.sessions:
-
-#             week_day_name = session.week_day.name.lower()
-
-#             schedule = session.schedule
-
-
-#             disciplina_info = schemas.ClassInfo(
-#                 subject_name = subject.name,
-#                 acronym = subject.syllabus,
-#                 teacher = teacher.full_name if teacher else "Professor não definido",
-#                 start_time = schedule.start_time,
-#                 end_time = schedule.end_time,
-#                 local = session.location
-#             )
-
-#             if week_day_name in week_days_map:
-#                 print('aquiiiiii')
-#                 week_days_map[week_day_name].append(disciplina_info)
-
-#     # Monta a lista final
-#     resultado = []
-#     for dia, disciplinas in week_days_map.items():
-#         if disciplinas:
-#             resultado.append({
-#                 "dia_da_semana": dia,
-#                 "disciplinas": disciplinas
-#             })
-#     return resultado
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    #return resultado
-# Rota para buscar a agenda semanal do usuário
-# @app.get("/students/schedule", response_model= str)#list[schemas.ScheduleInfo])
-# def get_student_schedule(token: dict = Depends(token_info_validate), db: Session = Depends(get_db)):
-
-#     user_id = int(token.get("sub"))
-#     user = db.query(models.User).filter(models.User.id == user_id).first()
-#     if not user:
-#         raise HTTPException(status_code=404, detail="Usuário não encontrado")
-    
-#     result = {}
-
-#     active_enrollments = [enrollment for enrollment in user.enrollments if enrollment.status_id == 1]
-#     class_groups = [enr.class_group for enr in active_enrollments]
-
-#     print(class_groups)
-#     return 'test'
-
-    # for enrollment in user.enrollments:
-
-    #     subject = enrollment.class_group.subject
-    #     subject_name = subject.name
-    #     class_sessions = enrollment.class_group.sessions    
-
-    #     classes = 0
-    #     absences = 0
-
-    #     for class_session in class_sessions:
-    #         classes += 1
-    #         for ab in class_session.absences:
-    #             absences += 1
-
-    #     result[subject_name] = {
-    #         "subject": subject_name,
-    #         "presences": classes - absences,
-    #         "absences": absences
-    #     }
-    
-    # return list(result.values())
+    return [schemas.HistoryInfo(**item) for item in history.values()]

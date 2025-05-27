@@ -89,6 +89,17 @@ class ScheduleInfo(BaseModel):
     week_day: str
     subjects: list[ClassInfo]
 
+class SubjectHistory(BaseModel):
+    subject_name: str
+    acronym: str
+    attendance: Optional[float]  # Pode ser None se não houver aulas
+    avarage_score: Optional[float]  # Pode ser None se não houver notas
+
+class HistoryInfo(BaseModel):
+    year: int
+    period: str
+    subjects: List[SubjectHistory]
+
 
 
 # class AssessmentInstrument:
