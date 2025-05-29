@@ -36,7 +36,13 @@ def get_password_hash(password):
 def authenticate_user(db: Session, email: str, password: str):
 
     user = actions.get_user_by_email(db, email)
-    if not user or not verify_password(password, user.password):
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuário não encontrado"
+        )
+    
+    if not verify_password(password, user.password):
         return False
     
     user_roles = [role.role_id for role in user.roles] 
@@ -79,38 +85,62 @@ async def token_info_validate(token: str = Depends(oauth2_scheme)):
 
 
 # Retorna o profile do usuário logado
-# Ainda não está finalizada. Falta trazer percenntual de progressão e rendimento
 async def get_home_profile(db: Session = Depends(get_db), token: dict = Depends(token_info_validate)):
-
-    # credentials_exception = HTTPException(
-    #     status_code=status.HTTP_401_UNAUTHORIZED,
-    #     detail="Não foi possível validar credenciais",
-    #     headers={"WWW-Authenticate": "Bearer"},
-    # )
-
-    # try:
-    #     payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    #     user_id = int(payload.get("sub"))
-    #     if user_id is None:
-    #         raise credentials_exception
-    # except JWTError as e:
-    #     raise credentials_exception
-
     user_id = int(token.get("sub"))
-
     user = actions.get_user(db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     
     period = max([sp.course_period for sp in user.student_periods], default=0) if user.student_periods else 0
-
+    
     if not user.profile:
         raise HTTPException(status_code=500, detail="Perfil do usuário não encontrado")
     
+    # Calcular percentual de progresso
+    progress_percentage = 0.0
+    average_grade = 0.0
+    
+    # Buscar o curso atual do aluno (última matrícula ativa)
+    current_enrollment = db.query(models.Enrollment).join(models.EnrollmentsStatus)\
+        .filter(models.Enrollment.student_id == user_id)\
+        .filter(models.EnrollmentsStatus.status.in_(["Ativo", "Cursando"]))\
+        .order_by(models.Enrollment.created_at.desc())\
+        .first()
+    
+    if current_enrollment and current_enrollment.course:
+        # Assumindo que cada ano = 2 períodos (semestres)
+        total_periods = current_enrollment.course.duration_years * 2
+        if total_periods > 0:
+            progress_percentage = min((period / total_periods) * 100, 100.0)
+    
+    # Calcular média de rendimento
+    if current_enrollment:
+        # Buscar todas as notas do aluno
+        scores_query = db.query(models.Score)\
+            .join(models.AssessmentInstrument)\
+            .join(models.ClassGroup)\
+            .filter(models.Score.enrollment_id == current_enrollment.id)\
+            .all()
+        
+        if scores_query:
+            # Calcular média ponderada considerando os pesos dos instrumentos
+            total_weighted_score = 0
+            total_weight = 0
+            
+            for score in scores_query:
+                weight = score.assessment_instrument.weight or 1  # peso padrão 1 se não definido
+                total_weighted_score += score.value * weight
+                total_weight += weight
+            
+            if total_weight > 0:
+                average_grade = total_weighted_score / total_weight
+    
     user_profile = schemas.UserProfile(
-        name=user.full_name, 
-        registration_number=user.profile.registration_number, 
-        student_period=period
+        name=user.full_name,
+        registration_number=user.profile.registration_number,
+        student_period=period,
+        progress_percentage=round(progress_percentage, 2),
+        average_grade=round(average_grade, 2)
     )
-
+    
     return user_profile

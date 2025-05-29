@@ -54,12 +54,13 @@ class UserRole(BaseModel):
         "from_attributes": True
     }
 
-# Usado para retornar os dados da tela inicial
+# No seu arquivo schemas.py
 class UserProfile(BaseModel):
     name: str
     registration_number: str
     student_period: int
-
+    progress_percentage: float
+    average_grade: float
 
 
 class AssessmentInstrumentSchema(BaseModel):
