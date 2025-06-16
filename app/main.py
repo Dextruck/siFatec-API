@@ -3,6 +3,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from .db import get_db
+from collections import defaultdict
+from datetime import datetime
 
 from . import actions, models, schemas
 from .database import SessionLocal, engine
@@ -260,3 +262,64 @@ def get_student_history(token: dict = Depends(token_info_validate), db: Session 
         })
 
     return [schemas.HistoryInfo(**item) for item in history.values()]
+
+
+# create message
+@app.post("/messages/", response_model=schemas.MessageOut)
+def create_message(message: schemas.MessageCreate, db: Session = Depends(get_db)):
+    users = db.query(models.User).filter(models.User.id.in_(message.user_ids)).all()
+
+    if len(users) != len(set(message.user_ids)):
+        raise HTTPException(status_code=400, detail="Um ou mais usuários não foram encontrados.")
+
+    db_message = models.Message(titulo=message.titulo, mensagem=message.mensagem)
+    db_message.destinatarios = users
+    db.add(db_message)
+    db.commit()
+    db.refresh(db_message)
+
+    return {
+        "id": db_message.id,
+        "titulo": db_message.titulo,
+        "mensagem": db_message.mensagem,
+        "created_at": db_message.created_at,
+        "user_ids": [user.id for user in db_message.destinatarios]
+    }
+
+
+# get messages
+@app.get("/students/messages", response_model=List[schemas.GroupedMessagesResponse])
+def get_user_messages(db: Session = Depends(get_db), token: dict = Depends(token_info_validate)):
+    user_id = int(token.get("sub"))
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
+
+    messages = user.mensagens_recebidas
+
+    # Ordenar mensagens por created_at
+    messages.sort(key=lambda m: m.created_at, reverse=False)  # ou reverse=True se quiser mais recentes primeiro
+
+    # Agrupar por dia (formato "dd/mm/yyyy")
+    grouped = defaultdict(list)
+    for m in messages:
+        day_str = m.created_at.strftime("%d/%m/%Y")
+        grouped[day_str].append({
+            "id": m.id,
+            "titulo": m.titulo,
+            "mensagem": m.mensagem,
+            "created_at": m.created_at,
+            "user_ids": [u.id for u in m.destinatarios]
+        })
+
+    # Retornar como lista de dicionários
+    result = [
+        {"day": day, "messages": msgs}
+        for day, msgs in grouped.items()
+    ]
+
+    # Ordenar grupos por data (mais recente primeiro, se quiser)
+    result.sort(key=lambda g: datetime.strptime(g["day"], "%d/%m/%Y"), reverse=True)
+
+    return result

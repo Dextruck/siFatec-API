@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime, Date, func, Index, UniqueConstraint, Time
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime, Date, func, Index, UniqueConstraint, Time, Table
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -14,32 +14,24 @@ class AuditMixin:
     updated_at = Column(DateTime(), default=datetime.utcnow, onupdate=datetime.utcnow)
     deleted_at = Column(DateTime(), nullable=True)
 
-class Message(PrimaryKey, Base, AuditMixin):
-    __tablename__ = 'messages'
-    
-    title = Column(String(255), nullable=False)
-    content = Column(Text, nullable=False)
-    send_at = Column(DateTime, nullable=False)
-    expires_at = Column(DateTime, nullable=True)
-    
-    # Relacionamentos
-    targets = relationship('MessageTarget', back_populates='message', cascade='all, delete-orphan')
+# Tabela de associação
+message_targets = Table(
+    'message_targets',
+    Base.metadata,
+    Column('message_id', Integer, ForeignKey('messages.id'), primary_key=True),
+    Column('user_id', Integer, ForeignKey('users.id'), primary_key=True)
+)
 
+class Message(Base):
+    __tablename__ = "messages"
 
-class MessageTarget(PrimaryKey, Base, AuditMixin):
-    __tablename__ = 'message_targets'
-    
-    message_id = Column(Integer, ForeignKey('messages.id', ondelete='CASCADE'), nullable=False)
-    class_group_id = Column(Integer, ForeignKey('class_groups.id', ondelete='CASCADE'), nullable=True)
-    course_id = Column(Integer, ForeignKey('courses.id', ondelete='CASCADE'), nullable=True)
-    institution_id = Column(Integer, ForeignKey('institutions.id', ondelete='CASCADE'), nullable=True)
-    
-    # Relacionamentos
-    message = relationship('Message', back_populates='targets')
-    class_group = relationship('ClassGroup', foreign_keys=[class_group_id])
-    course = relationship('Course', foreign_keys=[course_id])
-    institution = relationship('Institution', foreign_keys=[institution_id])
+    id = Column(Integer, primary_key=True, index=True)
+    titulo = Column(String(100))
+    mensagem = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
+    # Relacionamento com os usuários
+    destinatarios = relationship("User", secondary=message_targets, back_populates="mensagens_recebidas")
 
 # User
 class User(PrimaryKey, Base, AuditMixin):
@@ -58,6 +50,7 @@ class User(PrimaryKey, Base, AuditMixin):
     notifications = relationship('NotificationsUsers', back_populates='user')
     received_notifications = relationship('Notification', secondary='notifications_users', back_populates='receivers')
     student_periods = relationship('StudentPeriod', back_populates='user')
+    mensagens_recebidas = relationship("Message", secondary=message_targets, back_populates="destinatarios")
 
 class UsersProfiles(Base, AuditMixin):
     __tablename__ = 'users_profiles'
@@ -90,7 +83,6 @@ class Course(PrimaryKey, Base, AuditMixin):
 
     enrollments = relationship('Enrollment', back_populates='course')
     sessions = relationship('ClassSessions', back_populates='course')
-    messages = relationship('MessageTarget', foreign_keys=[MessageTarget.course_id])
 
 class SchoolYear(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'school_years'
@@ -140,7 +132,6 @@ class Institution(PrimaryKey, Base, AuditMixin):
 
     state = relationship('States', back_populates='institutions')
     class_groups = relationship('ClassGroup', back_populates='institution')
-    messages = relationship('MessageTarget', foreign_keys=[MessageTarget.institution_id])
 
 class ClassGroup(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'class_groups'
@@ -157,7 +148,6 @@ class ClassGroup(PrimaryKey, Base, AuditMixin):
     subject = relationship('Subject', back_populates='class_group')
     assessment_instruments = relationship('AssessmentInstrument', back_populates='class_group')
     teacher = relationship('User', foreign_keys=[teacher_id])
-    messages = relationship('MessageTarget', foreign_keys=[MessageTarget.class_group_id])
 
 class ClassSchedule(PrimaryKey, Base, AuditMixin):
     __tablename__ = 'class_schedules'

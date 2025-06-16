@@ -101,6 +101,31 @@ class HistoryInfo(BaseModel):
     period: str
     subjects: List[SubjectHistory]
 
+class MessageCreate(BaseModel):
+    titulo: str
+    mensagem: str
+    user_ids: List[int]
+
+class MessageResponse(BaseModel):
+    id: int
+    titulo: str
+    mensagem: str
+    created_at: datetime
+    user_ids: List[int]
+
+class GroupedMessagesResponse(BaseModel):
+    day: str
+    messages: List[MessageResponse]
+
+class MessageOut(BaseModel):
+    id: int
+    content: str
+    created_at: datetime
+    # outros campos...
+
+    class Config:
+        from_attributes = True 
+
 
 
 # class AssessmentInstrument:
